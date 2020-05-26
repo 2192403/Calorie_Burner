@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
+import androidx.annotation.Keep
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -21,6 +22,7 @@ import com.google.android.gms.fitness.Fitness
 import com.google.android.gms.fitness.FitnessOptions
 import com.google.android.gms.fitness.data.DataSet
 import com.google.android.gms.fitness.data.DataType
+import com.google.android.gms.fitness.data.Field
 import com.google.android.gms.fitness.request.DataReadRequest
 import com.google.android.gms.fitness.result.DataReadResponse
 import com.google.android.gms.tasks.Task
@@ -53,6 +55,18 @@ class MainActivity : AppCompatActivity() {
     val FILE_NAME = "temp.jpg"
     val CAMERA_IMAGE_REQUEST = 3
     val CAMERA_PERMISSIONS_REQUEST = 2
+
+    var walkingTime = 0
+    var bikingTime = 0
+    var runningTime = 0
+
+    var walkingCaloriesPerHour = -1
+    var bikingCaloriesPerHour = -1
+    var runningCaloriesPerHour = -1
+
+    var walkingCaloriesPerHourDefault = 221
+    var bikingCaloriesPerHourDefault = 625
+    var runningCaloriesPerHourDefault = 588
 
     private val client = OkHttpClient()
 
@@ -227,20 +241,50 @@ class MainActivity : AppCompatActivity() {
                     override fun onResponse(call: Call, response: Response) {
                         val responseJsonInfo = JSONObject(response.body()!!.string())
                         Log.i("ResponseAPIrecipes", responseJsonInfo.toString())
+                        val title = responseJsonInfo.getString("title")
                         val nutrients = responseJsonInfo.getJSONObject("nutrition").getJSONArray("nutrients")
-                        var calories = ""
+                        var calories : Double = - 1.0
                         for (i in 0 until nutrients.length()) {
                             val nutrient = nutrients.getJSONObject(i)
                             Log.i("ResponseAPIrecipes", nutrient.toString())
                             if (nutrient.getString("title") == "Calories") {
-                                calories = nutrient.getString("amount")
+                                calories = nutrient.getInt("amount").toDouble()
                                 break
                             }
                         }
                         Log.i("ResponseAPIrecipes", "calories")
-                        Log.i("ResponseAPIrecipes", calories)
+                        Log.i("ResponseAPIrecipes", calories.toString())
                         runOnUiThread {
-                            calorieTextView.text = calories
+                            if (calories == -1.0) {
+                                calorieTextView.text = "We couldn't find the number of calories for that food"
+                            } else {
+                                when (maxOf(runningTime, walkingTime, bikingTime)) {
+                                    runningTime -> {
+                                        val timeToBurn : Double = if (runningCaloriesPerHour != -1) {
+                                            calories.div(runningCaloriesPerHour)
+                                        } else {
+                                            calories.div(runningCaloriesPerHourDefault)
+                                        }
+                                        calorieTextView.text = "Burn those ${calories} calories in ${timeToBurn} hours of the ${title} with a Run"
+                                    }
+                                    bikingTime -> {
+                                        val timeToBurn : Double = if (bikingCaloriesPerHour != -1) {
+                                            calories.div(bikingCaloriesPerHour)
+                                        } else {
+                                            calories.div(bikingCaloriesPerHourDefault)
+                                        }
+                                        calorieTextView.text = "Burn those ${calories} calories in ${timeToBurn} hours of the ${title} with a Bike Ride"
+                                    }
+                                    walkingTime -> {
+                                        val timeToBurn : Double = if (walkingCaloriesPerHour != -1) {
+                                            calories.div(walkingCaloriesPerHour)
+                                        } else {
+                                            calories.div(walkingCaloriesPerHourDefault)
+                                        }
+                                        calorieTextView.text = "Burn those ${calories} calories in ${timeToBurn} hours of the ${title} with a Walk"
+                                    }
+                                }
+                            }
                         }
                     }
                 })
@@ -269,6 +313,7 @@ class MainActivity : AppCompatActivity() {
                 val responseJson = JSONObject(response.body()!!.string())
                 val results = responseJson.getJSONArray("results")
                 Log.i("ResponseAPIrecipes", results.toString())
+                val title = results.getJSONObject(0).getString("title")
                 val firstResultId = results.getJSONObject(0).getInt("id")
                 Log.i("ResponseAPIrecipes", firstResultId.toString())
 
@@ -285,10 +330,40 @@ class MainActivity : AppCompatActivity() {
                     override fun onResponse(call: Call, response: Response) {
                         val responseJsonInfo = JSONObject(response.body()!!.string())
                         Log.i("ResponseAPIrecipes", responseJsonInfo.toString())
-                        val calories = responseJsonInfo.getString("calories")
-                        Log.i("ResponseAPIrecipes", calories)
+                        val calories = responseJsonInfo.getInt("calories").toDouble()
+
+                        Log.i("ResponseAPIrecipes", calories.toString())
                         runOnUiThread {
-                            calorieTextView.text = calories
+                            if (calories == -1.0) {
+                                calorieTextView.text = "We couldn't find the number of calories for that food"
+                            } else {
+                                when (maxOf(runningTime, walkingTime, bikingTime)) {
+                                    runningTime -> {
+                                        val timeToBurn : Double = if (runningCaloriesPerHour != -1) {
+                                            calories.div(runningCaloriesPerHour)
+                                        } else {
+                                            calories.div(runningCaloriesPerHourDefault)
+                                        }
+                                        calorieTextView.text = "Burn those ${calories} calories in ${timeToBurn} hours of the ${title} with a Run"
+                                    }
+                                    bikingTime -> {
+                                        val timeToBurn : Double = if (bikingCaloriesPerHour != -1) {
+                                            calories.div(bikingCaloriesPerHour)
+                                        } else {
+                                            calories.div(bikingCaloriesPerHourDefault)
+                                        }
+                                        calorieTextView.text = "Burn those ${calories} calories in ${timeToBurn} hours of the ${title} with a Bike Ride"
+                                    }
+                                    walkingTime -> {
+                                        val timeToBurn : Double = if (walkingCaloriesPerHour != -1) {
+                                            calories.div(walkingCaloriesPerHour)
+                                        } else {
+                                            calories.div(walkingCaloriesPerHourDefault)
+                                        }
+                                        calorieTextView.text = "Burn those ${calories} calories in ${timeToBurn} hours of the ${title} with a Walk"
+                                    }
+                                }
+                            }
                         }
                     }
                 })
@@ -305,6 +380,7 @@ class MainActivity : AppCompatActivity() {
     private fun fitSignIn(requestCode: FitActionRequestCode) {
         if (oAuthPermissionsApproved()) {
             performActionForRequestCode(requestCode)
+            performActionTest()
         } else {
             requestCode.let {
                 GoogleSignIn.requestPermissions(
@@ -324,8 +400,18 @@ class MainActivity : AppCompatActivity() {
      */
     private fun performActionForRequestCode(requestCode: FitActionRequestCode) = when (requestCode) {
         FitActionRequestCode.INSERT_AND_READ_DATA -> readHistoryData()
-        /*FitActionRequestCode.UPDATE_AND_READ_DATA -> updateAndReadData()
-        FitActionRequestCode.DELETE_DATA -> deleteData()*/
+    }
+
+    private fun performActionTest () {
+        val readRequest = queryFitnessData()
+        Fitness.getHistoryClient(this, getGoogleAccount())
+            .readData(readRequest)
+            .addOnSuccessListener { dataReadResponse ->
+                printDataTest(dataReadResponse)
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "There was a problem reading the data.", e)
+            }
     }
 
     private fun oAuthPermissionsApproved() = GoogleSignIn.hasPermissions(getGoogleAccount(), fitnessOptions)
@@ -340,7 +426,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun readHistoryData(): Task<DataReadResponse> {
         Log.i(TAG, "Start ReadHistoryData: ")// Begin by creating the query.
-        val readRequest = queryFitnessData()
         val readRequestCyclcing = queryFitnessDataSummary()
 
         return Fitness.getHistoryClient(this, getGoogleAccount())
@@ -379,16 +464,8 @@ class MainActivity : AppCompatActivity() {
         Log.i(TAG, "Range End: ${dateFormat.format(endTime)}")
 
         return DataReadRequest.Builder()
-            // The data request can specify multiple data types to return, effectively
-            // combining multiple data queries into one call.
-            // In this example, it's very unlikely that the request is for several hundred
-            // datapoints each consisting of a few steps and a timestamp.  The more likely
-            // scenario is wanting to see how many steps were walked per day, for 7 days.
-            .aggregate(DataType.TYPE_STEP_COUNT_DELTA, DataType.AGGREGATE_STEP_COUNT_DELTA)
-            // Analogous to a "Group By" in SQL, defines how data should be aggregated.
-            // bucketByTime allows for a time span, whereas bucketBySession would allow
-            // bucketing by "sessions", which would need to be defined in code.
-            .bucketByTime(1, TimeUnit.DAYS)
+            .aggregate(DataType.TYPE_BASAL_METABOLIC_RATE, DataType.AGGREGATE_BASAL_METABOLIC_RATE_SUMMARY)
+            .bucketByActivityType(30, TimeUnit.MINUTES)
             .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
             .build()
     }
@@ -409,15 +486,7 @@ class MainActivity : AppCompatActivity() {
         Log.i(TAG, "Range End: ${dateFormat.format(endTime)}")
 
         return DataReadRequest.Builder()
-            // The data request can specify multiple data types to return, effectively
-            // combining multiple data queries into one call.
-            // In this example, it's very unlikely that the request is for several hundred
-            // datapoints each consisting of a few steps and a timestamp.  The more likely
-            // scenario is wanting to see how many steps were walked per day, for 7 days.
             .aggregate(DataType.TYPE_ACTIVITY_SEGMENT, DataType.AGGREGATE_ACTIVITY_SUMMARY)
-            // Analogous to a "Group By" in SQL, defines how data should be aggregated.
-            // bucketByTime allows for a time span, whereas bucketBySession would allow
-            // bucketing by "sessions", which would need to be defined in code.
             .bucketByActivityType(30, TimeUnit.MINUTES)
             .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
             .build()
@@ -449,6 +518,36 @@ class MainActivity : AppCompatActivity() {
         // [END parse_read_data_result]
     }
 
+    private fun printDataTest(dataReadResult: DataReadResponse) {
+        Log.i(TAG, "Start printData: ")
+        // [START parse_read_data_result]
+        // If the DataReadRequest object specified aggregated data, dataReadResult will be returned
+        // as buckets containing DataSets, instead of just DataSets.
+        if (dataReadResult.buckets.isNotEmpty()) {
+            Log.i(TAG, "Number of returned buckets of DataSets is: " + dataReadResult.buckets.size)
+            for (bucket in dataReadResult.buckets) {
+                Log.i(TAG, "bucket activity: ${bucket.bucketType}")
+                bucket.dataSets.forEach {
+                    Log.i(TAG, "dataPoint size: ${it.dataPoints.size}")
+                    it.dataPoints.forEach { dp ->
+                        Log.i(TAG, "field: ${dp.getValue(Field.FIELD_AVERAGE)}")
+                        when (bucket.activity) {
+                            "walking" -> walkingCaloriesPerHour = (dp.getValue(Field.FIELD_AVERAGE).asInt().div(24))
+                            "running" -> runningCaloriesPerHour = (dp.getValue(Field.FIELD_AVERAGE).asInt().div(24))
+                            "biking" -> bikingCaloriesPerHour = (dp.getValue(Field.FIELD_AVERAGE).asInt().div(24))
+                        }
+                    }
+                    //Log.i(TAG, "bucket activity: ${it.dataType.fields[0].name}")
+                    //Log.i(TAG, "bucket activity: ${it.dataType.fields[0]}")
+                }
+            }
+        } else if (dataReadResult.dataSets.isNotEmpty()) {
+            Log.i(TAG, "Number of returned DataSets is: " + dataReadResult.dataSets.size)
+            //dataReadResult.dataSets.forEach { dumpDataSet(it) }
+        }
+        // [END parse_read_data_result]
+    }
+
     // [START parse_dataset]
     private fun dumpDataSet(dataSet: DataSet) {
         Log.i(TAG, "Data returned for Data type: ${dataSet.dataType.name}")
@@ -458,9 +557,32 @@ class MainActivity : AppCompatActivity() {
             Log.i(TAG, "\tType: ${dp.dataType.name}")
             //Log.i(TAG, "\tStart: ${dp.getStartTimeString()}")
             //Log.i(TAG, "\tEnd: ${dp.getEndTimeString()}")
+            Log.i(TAG, "\tFields: ${dp.dataType.fields}")
+            var walkingField = false
+            var runningField = false
+            var bikingFiled = false
             dp.dataType.fields.forEach {
                 if (it.name == "activity") {
                     Log.i(TAG, "\tField: ${it.name} Value: ${dp.getValue(it).asActivity()}")
+                    when (dp.getValue(it).toString().toInt()) {
+                        7 -> walkingField = true
+                        8 -> runningField = true
+                        1 -> bikingFiled = true
+                    }
+                }
+                if (it.name == "duration") {
+                    if (walkingField) {
+                        walkingTime = dp.getValue(it).toString().toInt()
+                        walkingField = false
+                    }
+                    if (runningField) {
+                        runningTime = dp.getValue(it).toString().toInt()
+                        runningField = false
+                    }
+                    if (bikingFiled) {
+                        bikingTime = dp.getValue(it).toString().toInt()
+                        bikingFiled = false
+                    }
                 }
                 Log.i(TAG, "\tField: ${it.name} Value: ${dp.getValue(it)}")
             }
